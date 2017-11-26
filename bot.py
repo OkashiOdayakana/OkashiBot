@@ -30,7 +30,7 @@ async def fetch(session, url):
 
 @bot.command(pass_context=True, hidden=True)
 async def shell(ctx, *, code: str):
-    if not ctx.message.author.is_owner():
+    if not bot.is_owner(ctx.message.author):
         await ctx.send("You cant run this mane lol", delete_after=5)
         return 1
     try:
@@ -42,7 +42,7 @@ async def shell(ctx, *, code: str):
 
 @bot.command(pass_context=True, hidden=True)
 async def debug(ctx, *, code: str):
-    if not ctx.message.author.is_owner():
+    if not bot.is_owner(ctx.message.author):
         await ctx.send("Pls dont try that", delete_after=5)
         return 1
     try:
