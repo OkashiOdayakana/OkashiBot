@@ -1,16 +1,12 @@
-
 import discord
 from discord.ext import commands
 bot = commands.Bot(command_prefix='%')
-import requests
 import json
-import time
 from bash import bash
 import inspect
 import asyncio
 import aiohttp
 import async_timeout
-import os
 ownerid = 120215873247117312
 
 with open('config.json') as json_data:
