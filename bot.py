@@ -7,10 +7,10 @@ import inspect
 import asyncio
 import aiohttp
 import async_timeout
-
 with open('config.json') as json_data:
     obj = json.load(json_data)
     token = obj["api_key"]
+
 
 @bot.event
 async def on_ready():
@@ -18,7 +18,6 @@ async def on_ready():
     print(bot.user.name)
     print(bot.user.id)
     print('------')
-
 
 
 async def fetch(session, url):
@@ -30,28 +29,30 @@ async def fetch(session, url):
 
 @bot.command(pass_context=True, hidden=True)
 async def shell(ctx, *, code: str):
-    if not bot.is_owner(ctx.message.author):
-        await ctx.send("You cant run this mane lol", delete_after=5)
+    if bot.is_owner(ctx.message.author):
+        try:
+            result = bash(code)
+            await ctx.send("```bash\n{}```".format(result))
+        except Exception as e:
+            await ctx.send(e)
+    else:
+        await ctx.send("No pls", delete_after=5)
         return 1
-    try:
-        result = bash(code)
-        await ctx.send("```bash\n{}```".format(result))
-    except Exception as e:
-        await ctx.send(e)
 
 
 @bot.command(pass_context=True, hidden=True)
 async def debug(ctx, *, code: str):
-    if not bot.is_owner(ctx.message.author):
-        await ctx.send("Pls dont try that", delete_after=5)
+    if bot.is_owner(ctx.message.author):
+        try:
+            result = eval(code)
+            if inspect.isawaitable(result):
+                result = await result
+            await ctx.send("```py\n{}```".format(result))
+        except Exception as e:
+            await ctx.send("```py\n{}\n```".format(e))
+    else:
+        await ctx.send("No pls", delete_after=5)
         return 1
-    try:
-        result = eval(code)
-        if inspect.isawaitable(result):
-            result = await result
-        await ctx.send("```py\n{}```".format(result))
-    except Exception as e:
-        await ctx.send(e)
 
 
 @bot.command(pass_context=True)
@@ -94,8 +95,8 @@ async def gelbooru(ctx, tag,  page='1'):
             return 1
         embed = discord.Embed(
             title='Gelbooru', url='https://gelbooru.com', color=0x00fff)
-        embed.add_field(name='Rating: ' + rating,
-                        value='Tags: ' + tags, inline=True)
+        embed.add_field(name='Rating', value=rating, inline=True)
+        embed.add_field(name='Tags', value=tags, inline=True)
         embed.set_image(url=url)
         msg = await ctx.send(embed=embed)
         if int(page) > 1:
@@ -150,8 +151,8 @@ async def lolibooru(ctx, tag, page='1'):
             return 1
         embed = discord.Embed(
             title="Lolibooru", url='https://lolibooru.moe', color=0x00fff)
-        embed.add_field(name='Rating: ' + rating,
-                        value='Tags: ' + tags, inline=True)
+        embed.add_field(name='Rating', value=rating, inline=True)
+        embed.add_field(name='Tags', value=tags, inline=True)
         embed.set_image(url=url)
         msg = await ctx.send(embed=embed)
         if int(page) > 1:
@@ -213,11 +214,11 @@ async def danbooru(ctx, tag, page='1'):
             return 1
         embed = discord.Embed(
             title="Danbooru", url='https://danbooru.donmai.us', color=0x00fff)
-        embed.add_field(name='Rating: ' + rating,
-                        value='Tags: ' + tags, inline=True)
+        embed.add_field(name='Rating', value=rating, inline=True)
+        embed.add_field(name='Tags', value=tags, inline=True)
         embed.set_image(url=url)
         msg = await ctx.send(embed=embed)
-        
+
         if int(page) > 1:
             await msg.add_reaction('\U00002B05')
         await msg.add_reaction('\U000027A1')
@@ -254,16 +255,20 @@ async def safebooru(ctx, tag, page='1'):
         invoker = ctx.message.author
         post = await fetch(session, "https://safebooru.org/index.php?page=dapi&s=post&q=index&limit=1&tags={}&pid={}&json=1".format(tag, page))
         obj = json.loads(post)
-        directory = obj[0]['directory']
-        file_name = obj[0]['image']
-        url = 'https://safebooru.org/images/{}/{}'.format(directory, file_name)
-        tags_raw = obj[0]['tags']
-        rating = obj[0]['rating']
-        tags = tags_raw[:200] + (tags_raw[200:] and '..')
+        try:
+            directory = obj[0]['directory']
+            file_name = obj[0]['image']
+            url = 'https://safebooru.org/images/{}/{}'.format(directory, file_name)
+            tags_raw = obj[0]['tags']
+            rating = obj[0]['rating']
+            tags = tags_raw[:200] + (tags_raw[200:] and '..')
+        except Exception as e:
+            await ctx.send('Tag not found.', delete_after=5)
+            return 1
         embed = discord.Embed(
             title="Safebooru", url='https://safebooru.org', color=0x00fff)
-        embed.add_field(name='Rating: ' + rating,
-                        value='Tags: ' + tags, inline=True)
+        embed.add_field(name='Rating', value=rating, inline=True)
+        embed.add_field(name='Tags', value=tags, inline=True)
         embed.set_image(url=url)
         msg = await ctx.send(embed=embed)
         if int(page) > 1:
@@ -302,15 +307,18 @@ async def konachan(ctx, tag, page='1'):
         invoker = ctx.message.author
         post = await fetch(session, "https://konachan.com/post.json?limit=1&tags={}&page={}".format(tag, page))
         obj = json.loads(post)
-        url_raw = obj[0]['jpeg_url']
-        url = 'https:{}'.format(url_raw)
-        tags_raw = obj[0]["tags"]
-        tags = tags_raw[:200] + (tags_raw[200:] and '..')
-        rating = obj[0]['rating']
+        try:
+            url_raw = obj[0]['jpeg_url']
+            url = 'https:{}'.format(url_raw)
+            tags_raw = obj[0]["tags"]
+            tags = tags_raw[:200] + (tags_raw[200:] and '..')
+            rating = obj[0]['rating']
+        except Exception as e:
+            await ctx.send('Tag not found.', delete_after=5)
         embed = discord.Embed(
             title="Konachan", url='https://konachan.com', color=0x00fff)
-        embed.add_field(name='Rating: ' + rating,
-                        value='Tags: ' + tags, inline=True)
+        embed.add_field(name='Rating', value=rating, inline=True)
+        embed.add_field(name='Tags', value=tags, inline=True)
         embed.set_image(url=url)
         msg = await ctx.send(embed=embed)
         if int(page) > 1:
@@ -372,4 +380,24 @@ async def quran(ctx):
         embed = discord.Embed(title="Random Quran verse", color=0x981aff)
         embed.add_field(name="Chapter name: " + chapter, value=text)
         await ctx.send(embed=embed)
+
+
+@bot.command(pass_context=True)
+async def userinfo(ctx, user: discord.Member = None):
+    if user == None:
+        user = ctx.message.author
+    name = user.name
+    join = user.joined_at
+    age = user.created_at
+    embed = discord.Embed(title=discord.Embed.Empty, color=0x981aff)
+    embed.add_field(name='Status', value=user.status, inline=True)
+    embed.add_field(name='ID', value=user.id, inline=True)
+    embed.add_field(name='Guild Join Date', value=join, inline=True)
+    embed.add_field(name='Account Creation Date', value=age, inline=True)
+    embed.add_field(name='Nick', value=user.display_name, inline=True)
+    embed.set_thumbnail(url=user.avatar_url)
+    embed.set_author(name=user.name + '#' + user.discriminator,
+                     url=embed.Empty, icon_url=user.avatar_url)
+    await ctx.send(embed=embed)
+
 bot.run(token)
